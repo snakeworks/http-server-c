@@ -18,7 +18,7 @@ typedef enum {
 
 typedef struct {
     int fd;
-    short port;
+    unsigned short port;
 } Server;
 
 typedef struct {
@@ -33,7 +33,7 @@ Http_Method cstr_to_http_method(char *str) {
     else UNKNOWN;
 }
 
-int server_init(Server *server, short port) {
+int server_init(Server *server, unsigned short port) {
     server->fd = socket(AF_INET, SOCK_STREAM, 0);
     server->port = htons(port);
 
@@ -183,7 +183,7 @@ int main() {
         return -1;
     }
 
-    printf("Server listening on port: %d\n", ntohs(server.port));
+    printf("Server listening on port: %hu\n", ntohs(server.port));
 
     while (1) {
         Request req = {0};
