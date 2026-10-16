@@ -33,9 +33,9 @@ Http_Method cstr_to_http_method(char *str) {
     else UNKNOWN;
 }
 
-int server_init(Server *server) {
+int server_init(Server *server, short port) {
     server->fd = socket(AF_INET, SOCK_STREAM, 0);
-    server->port = htons(PORT);
+    server->port = htons(port);
 
     if (server->fd < 0) {
         perror("socket");
@@ -179,7 +179,7 @@ int process_request(Request *req) {
 
 int main() {
     Server server = {0};
-    if (server_init(&server) < 0) {
+    if (server_init(&server, PORT) < 0) {
         return -1;
     }
 
