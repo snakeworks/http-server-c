@@ -8,6 +8,7 @@
 #define PORT 8080
 #define MAX_REQUEST_LEN 1024
 #define MAX_RESOURCE_LEN 512
+#define MAX_HTTP_METHOD_LEN 7
 
 typedef enum {
     GET,
@@ -17,7 +18,7 @@ typedef enum {
 
 typedef struct {
     int fd;
-    int port;
+    short port;
 } Server;
 
 typedef struct {
@@ -81,8 +82,8 @@ int recv_request(Server *server, Request *req) {
     recv(req->sender_fd, &buf, MAX_REQUEST_LEN, 0);
 
     char *s = &buf[0];
-    char http_method[7];
-    memset(http_method, 0, 7);
+    char http_method[MAX_HTTP_METHOD_LEN];
+    memset(http_method, 0, MAX_HTTP_METHOD_LEN);
     memset(req->resource, 0, MAX_RESOURCE_LEN);
 
     // TODO: Very unsafe, but works lol
@@ -181,6 +182,8 @@ int main() {
     if (server_init(&server) < 0) {
         return -1;
     }
+
+    printf("Server listening on port: %d\n", ntohs(server.port));
 
     while (1) {
         Request req = {0};
