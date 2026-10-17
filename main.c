@@ -75,7 +75,7 @@ int server_init(Server *server, unsigned short port) {
 // NOTE: I know there is the inet_ntop function, but I thought it'd be fun to write my own.
 // It will probably only make sense on little endian machines though, so don't try running
 // this on your IBM System/360. Also it won't work on IPv6 addresses, but who cares?
-int addr_to_str(
+int addr_to_cstr(
     short buffer_size;
     struct sockaddr_in *addr,
     char buffer[restrict buffer_size],
@@ -104,7 +104,7 @@ int recv_request(Server *server, Request *req) {
     req->sender_fd = accept(server->fd, (struct sockaddr *) &addr, &addr_len);
 
     char ipbuf[IPV4_STR_LEN];
-    addr_to_str(&addr, ipbuf, IPV4_STR_LEN);
+    addr_to_cstr(&addr, ipbuf, IPV4_STR_LEN);
     printf("Received request from IP: %s\n", ipbuf); // Leaking client IP lmao
 
     if (req->sender_fd < 0) {
