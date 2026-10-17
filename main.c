@@ -40,6 +40,25 @@ Http_Method cstr_to_http_method(char *str) {
     else UNKNOWN;
 }
 
+char *read_file_to_cstr(const char *path) {
+    FILE *file = fopen(path, "r");
+
+    if (file == NULL) {
+        printf("read_file_to_cstr: Failed to open file '%s'\n", path);
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *contents = (char *)malloc(sizeof(char) * file_size + 1);
+    fread(contents, file_size, sizeof(char), file);
+    fclose(file);
+    contents[file_size] = '\0';
+
+    return contents;
+}
+
 int server_init(Server *server, unsigned short port) {
     server->fd = socket(AF_INET, SOCK_STREAM, 0);
     server->port = htons(port);
@@ -175,11 +194,30 @@ char *render_html(
         } else if (contents[i] == '}') {
             inside_braces = 0;
 
+            // TODO: So much hacks and dirty code but it works
             char *arg_value = "";
-            for (size_t j = 0; j < args->argc; j++) {
-                if (strcmp(arg_buf, args->arg_keys[j]) == 0) {
-                    arg_value = args->arg_values[j];
-                    break;
+            int should_free_value = 0;
+            if (arg_buf[0] == '@') {
+                should_free_value = 1;
+
+                arg_buf++;
+
+                char *cur_dir = getcwd(NULL, 0);
+                size_t str_size = strlen(cur_dir) + strlen(arg_buf) + 2;
+
+                char full_path[str_size];
+
+                snprintf(full_path, str_size, "%s/%s", cur_dir, arg_buf);
+                arg_value = read_file_to_cstr(full_path);
+
+                arg_buf--;
+                free(cur_dir);
+            } else {
+                for (size_t j = 0; j < args->argc; j++) {
+                    if (strcmp(arg_buf, args->arg_keys[j]) == 0) {
+                        arg_value = args->arg_values[j];
+                        break;
+                    }
                 }
             }
 
@@ -197,6 +235,7 @@ char *render_html(
                 buf_index++;
             }
 
+            if (should_free_value == 1) free(arg_value);
             free(arg_buf);
         } else if (inside_braces == 1) {
             arg_buf[strlen(arg_buf)] = contents[i];
@@ -224,12 +263,11 @@ int send_html(
         return -1;
     }
 
-    FILE *file = fopen(path, "r");
-
-    if (file == NULL) {
-        printf("send_html: Failed to open file '%s'\n", path);
+    char *contents = read_file_to_cstr(path);
+    if (contents == NULL) {
         return -1;
     }
+    size_t file_size = strlen(contents);
 
     struct sockaddr_in addr = {0};
     socklen_t socklen = sizeof(addr);
@@ -246,13 +284,6 @@ int send_html(
     size_t header_size = strlen(header_format) + strlen(reason) + 3; // +3 because of status code
     char header[header_size];
     sprintf(header, header_format, code, reason);
-
-    fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    char *contents = (char *)malloc(sizeof(char) * file_size);
-    fread(contents, file_size, sizeof(char), file);
-    fclose(file);
 
     char *parsed_html = render_html(contents, file_size, args);
 
@@ -292,9 +323,9 @@ int process_request(Request *req) {
 
     if (strcmp(req->resource, "/") == 0) {
         Html_Template_Args args = {
-            .argc = 2,
-            .arg_keys = (char *[]){"name", "some_html"},
-            .arg_values = (char *[]){"Bob", "<h1>HTML injected from C!</h1>"},
+            .argc = 1,
+            .arg_keys = (char *[]){"name"},
+            .arg_values = (char *[]){"Bob"},
         };
         return send_html(req->sender_fd, "./index.html", 200, "OK", &args);
     }
