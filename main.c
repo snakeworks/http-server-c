@@ -105,7 +105,7 @@ int recv_request(Server *server, Request *req) {
 
     char ipbuf[IPV4_STR_LEN];
     addr_to_str(&addr, ipbuf, IPV4_STR_LEN);
-    printf("Recevied request from IP: %s\n", ipbuf); // Leaking client IP lmao
+    printf("Received request from IP: %s\n", ipbuf); // Leaking client IP lmao
 
     if (req->sender_fd < 0) {
         perror("recv_request");
