@@ -28,6 +28,12 @@ typedef struct {
     char resource[MAX_RESOURCE_LEN];
 } Request;
 
+typedef struct {
+    size_t argc;
+    char **arg_keys;
+    char **arg_values;
+} Html_Template_Args;
+
 Http_Method cstr_to_http_method(char *str) {
     if (strcmp(str, "GET") == 0) return GET;
     else if (strcmp(str, "POST") == 0) return POST;
@@ -147,8 +153,72 @@ int recv_request(Server *server, Request *req) {
     return 0;
 }
 
+// TODO: Unsafe and probably breaks easily, just like every other god damn function in this project
+char *render_html(
+    const char *contents,
+    size_t contents_size,
+    Html_Template_Args *args
+) {
+    char *buf = malloc(sizeof(char) * contents_size);
+    memset(buf, 0, contents_size);
+
+    size_t total_size = contents_size;
+    size_t buf_index = 0;
+
+    int inside_braces = 0;
+    char *arg_buf;
+    for (size_t i = 0; i < contents_size; i++) {
+        if (contents[i] == '{') {
+            inside_braces = 1;
+            arg_buf = malloc(sizeof(char) * 1024);
+            memset(arg_buf, 0, 1024);
+        } else if (contents[i] == '}') {
+            inside_braces = 0;
+
+            char *arg_value = "";
+            for (size_t j = 0; j < args->argc; j++) {
+                if (strcmp(arg_buf, args->arg_keys[j]) == 0) {
+                    arg_value = args->arg_values[j];
+                    break;
+                }
+            }
+
+            size_t arg_value_size = strlen(arg_value);
+            total_size += arg_value_size;
+            char *new_buf = realloc(buf, total_size);
+            if (new_buf == NULL) {
+                printf("Ran out of memory\n");
+                exit(-1);
+            }
+            buf = new_buf;
+
+            for (size_t j = 0; j < arg_value_size; j++) {
+                buf[buf_index] = arg_value[j];
+                buf_index++;
+            }
+
+            free(arg_buf);
+        } else if (inside_braces == 1) {
+            arg_buf[strlen(arg_buf)] = contents[i];
+        } else {
+            buf[buf_index] = contents[i];
+            buf_index++;
+        }
+    }
+
+    buf[buf_index] = '\0';
+
+    return buf;
+}
+
 // TODO: Unsafe but works, pls fix later
-int send_html(int fd, const char *path, int code, const char *reason) {
+int send_html(
+    int fd,
+    const char *path,
+    int code,
+    const char *reason,
+    Html_Template_Args *args
+) {
     if (code < 100 || code > 999) {
         printf("send_html: Status code must be between 100-999");
         return -1;
@@ -160,6 +230,17 @@ int send_html(int fd, const char *path, int code, const char *reason) {
         printf("send_html: Failed to open file '%s'\n", path);
         return -1;
     }
+
+    struct sockaddr_in addr = {0};
+    socklen_t socklen = sizeof(addr);
+    int peername_result = getpeername(fd, (struct sockaddr *) &addr, &socklen);
+    if (peername_result < 0) {
+        perror("send_html");
+        return -1;
+    }
+
+    char ipbuf[IPV4_STR_LEN];
+    addr_to_cstr(&addr, ipbuf, IPV4_STR_LEN);
 
     char *header_format = "HTTP/1.1 %d %s\r\nContent-Type: text/html\r\n\r\n";
     size_t header_size = strlen(header_format) + strlen(reason) + 3; // +3 because of status code
@@ -173,22 +254,26 @@ int send_html(int fd, const char *path, int code, const char *reason) {
     fread(contents, file_size, sizeof(char), file);
     fclose(file);
 
-    size_t response_size = file_size + header_size;
+    char *parsed_html = render_html(contents, file_size, args);
+
+    size_t response_size = strlen(parsed_html) + header_size + 1;
     char *response = (char *)malloc(sizeof(char) * response_size);
     memset(response, 0, response_size);
 
     strcpy(response, header);
-    strcat(response, contents);
+    strcat(response, parsed_html);
 
     int send_result = send(fd, response, response_size, 0);
     if (send_result < 0) {
         perror("send_html");
         free(response);
+        free(parsed_html);
         free(contents);
         return send_result;
     }
 
     free(response);
+    free(parsed_html);
     free(contents);
 
     return 0;
@@ -205,8 +290,15 @@ int process_request(Request *req) {
         return 0;
     }
 
-    if (strcmp(req->resource, "/") == 0) return send_html(req->sender_fd, "./index.html", 200, "OK");
-    else return send_html(req->sender_fd, "./404.html", 404, "Not Found");
+    if (strcmp(req->resource, "/") == 0) {
+        Html_Template_Args args = {
+            .argc = 2,
+            .arg_keys = (char *[]){"name", "some_html"},
+            .arg_values = (char *[]){"Bob", "<h1>HTML injected from C!</h1>"},
+        };
+        return send_html(req->sender_fd, "./index.html", 200, "OK", &args);
+    }
+    else return send_html(req->sender_fd, "./404.html", 404, "Not Found", NULL);
 
     return 0;
 }
