@@ -9,6 +9,7 @@
 #define MAX_REQUEST_LEN 1024
 #define MAX_RESOURCE_LEN 512
 #define MAX_HTTP_METHOD_LEN 7
+#define IPV4_STR_LEN 16
 
 typedef enum {
     GET,
@@ -71,8 +72,41 @@ int server_init(Server *server, unsigned short port) {
     return 0;
 }
 
+// NOTE: I know there is the inet_ntop function, but I thought it'd be fun to write my own.
+// It will probably only make sense on little endian machines though, so don't try running
+// this on your IBM System/360. Also it won't work on IPv6 addresses, but who cares?
+int addr_to_str(
+    short buffer_size;
+    struct sockaddr_in *addr,
+    char buffer[restrict buffer_size],
+    short buffer_size
+) {
+    if (buffer_size < IPV4_STR_LEN) {
+        return -1;
+    }
+
+    unsigned int addr_uint = addr->sin_addr.s_addr; // addr_uint is big endian!
+    sprintf(
+        buffer,
+        "%d.%d.%d.%d",
+        (addr_uint) & 0xff,
+        (addr_uint >> 8) & 0xff,
+        (addr_uint >> 16) & 0xff,
+        (addr_uint >> 24) & 0xff
+    );
+
+    return 0;
+}
+
 int recv_request(Server *server, Request *req) {
-    req->sender_fd = accept(server->fd, NULL, NULL);
+    struct sockaddr_in addr = {0};
+    socklen_t addr_len = sizeof(addr);
+    req->sender_fd = accept(server->fd, (struct sockaddr *) &addr, &addr_len);
+
+    char ipbuf[IPV4_STR_LEN];
+    addr_to_str(&addr, ipbuf, IPV4_STR_LEN);
+    printf("Recevied request from IP: %s\n", ipbuf); // Leaking client IP lmao
+
     if (req->sender_fd < 0) {
         perror("recv_request");
         return req->sender_fd;
