@@ -6,7 +6,7 @@
 
 #define PORT 8080
 
-int process_request(Request *req) {
+i32 process_request(Request *req) {
     if (strcmp(req->resource, "/") == 0) {
         Html_Template_Args args = {
             .argc = 1,
@@ -20,7 +20,7 @@ int process_request(Request *req) {
     return 0;
 }
 
-int main() {
+i32 main() {
     Server server = {0};
     if (server_init(&server, PORT) < 0) {
         return -1;

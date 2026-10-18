@@ -16,21 +16,21 @@ char *render_html(
     usize total_size = contents_size;
     usize buf_index = 0;
 
-    int inside_braces = 0;
+    bool inside_braces = false;
     char *arg_buf;
     for (usize i = 0; i < contents_size; i++) {
         if (contents[i] == '{') {
-            inside_braces = 1;
+            inside_braces = true;
             arg_buf = malloc(sizeof(char) * 1024);
             memset(arg_buf, 0, 1024);
         } else if (contents[i] == '}') {
-            inside_braces = 0;
+            inside_braces = false;
 
             // TODO: So much hacks and dirty code but it works
             char *arg_value = "";
-            int should_free_value = 0;
+            bool should_free_value = false;
             if (arg_buf[0] == '@') {
-                should_free_value = 1;
+                should_free_value = true;
 
                 arg_buf++;
 
@@ -67,9 +67,9 @@ char *render_html(
                 buf_index++;
             }
 
-            if (should_free_value == 1) free(arg_value);
+            if (should_free_value == true) free(arg_value);
             free(arg_buf);
-        } else if (inside_braces == 1) {
+        } else if (inside_braces == true) {
             arg_buf[strlen(arg_buf)] = contents[i];
         } else {
             buf[buf_index] = contents[i];

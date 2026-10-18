@@ -11,7 +11,7 @@
 #define IPV4_STR_LEN 16
 
 typedef struct {
-    int fd;
+    i32 fd;
     unsigned short port;
 } Server;
 
@@ -22,21 +22,21 @@ typedef enum {
 } Http_Method;
 
 typedef struct {
-    int sender_fd;
+    i32 sender_fd;
     Http_Method method;
     char resource[MAX_RESOURCE_LEN];
 } Request;
 
 Http_Method cstr_to_http_method(char *str);
-u8 addr_to_cstr(
+i32 addr_to_cstr(
     u16 buffer_size;
     struct sockaddr_in *addr,
     char buffer[restrict buffer_size],
     u16 buffer_size
 );
-u8 server_init(Server *server, u16 port);
-u8 server_recv_request(Server *server, Request *req);
-u8 send_html(
+i32 server_init(Server *server, u16 port);
+i32 server_recv_request(Server *server, Request *req);
+i32 send_html(
     i32 fd,
     const char *path,
     u16 code,

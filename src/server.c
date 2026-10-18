@@ -14,7 +14,7 @@ Http_Method cstr_to_http_method(char *str) {
 // NOTE: I know there is the inet_ntop function, but I thought it'd be fun to write my own.
 // It will probably only make sense on little endian machines though, so don't try running
 // this on your IBM System/360. Also it won't work on IPv6 addresses, but who cares?
-u8 addr_to_cstr(
+i32 addr_to_cstr(
     u16 buffer_size;
     struct sockaddr_in *addr,
     char buffer[restrict buffer_size],
@@ -24,7 +24,7 @@ u8 addr_to_cstr(
         return -1;
     }
 
-    unsigned int addr_uint = addr->sin_addr.s_addr; // addr_uint is big endian!
+    u32 addr_uint = addr->sin_addr.s_addr; // addr_uint is big endian!
     sprintf(
         buffer,
         "%d.%d.%d.%d",
@@ -37,7 +37,7 @@ u8 addr_to_cstr(
     return 0;
 }
 
-u8 server_init(Server *server, u16 port) {
+i32 server_init(Server *server, u16 port) {
     server->fd = socket(AF_INET, SOCK_STREAM, 0);
     server->port = htons(port);
 
@@ -54,19 +54,19 @@ u8 server_init(Server *server, u16 port) {
         }
     };
 
-    int sock_opt_result = setsockopt(server->fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+    i32 sock_opt_result = setsockopt(server->fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
     if (sock_opt_result < 0) {
         perror("setsockopt");
         return sock_opt_result;
     }
 
-    int bind_result = bind(server->fd, (struct sockaddr *) &addr, sizeof(addr));
+    i32 bind_result = bind(server->fd, (struct sockaddr *) &addr, sizeof(addr));
     if (bind_result < 0) {
         perror("bind");
         return bind_result;
     }
 
-    int listen_result = listen(server->fd, 10);
+    i32 listen_result = listen(server->fd, 10);
     if (listen_result < 0) {
         perror("listen");
         return listen_result;
@@ -77,7 +77,7 @@ u8 server_init(Server *server, u16 port) {
     return 0;
 }
 
-u8 server_recv_request(Server *server, Request *req) {
+i32 server_recv_request(Server *server, Request *req) {
     struct sockaddr_in addr = {0};
     socklen_t addr_len = sizeof(addr);
     req->sender_fd = accept(server->fd, (struct sockaddr *) &addr, &addr_len);
@@ -100,7 +100,7 @@ u8 server_recv_request(Server *server, Request *req) {
     memset(req->resource, 0, MAX_RESOURCE_LEN);
 
     // TODO: Very unsafe, but works lol
-    int part = 0;
+    u8 part = 0;
     while (*s != '\r') {
         if (*s == ' ') {
             part++;
@@ -127,7 +127,7 @@ u8 server_recv_request(Server *server, Request *req) {
 }
 
 // TODO: Unsafe but works, pls fix later
-u8 send_html(
+i32 send_html(
     i32 fd,
     const char *path,
     u16 code,
@@ -147,7 +147,7 @@ u8 send_html(
 
     struct sockaddr_in addr = {0};
     socklen_t socklen = sizeof(addr);
-    int peername_result = getpeername(fd, (struct sockaddr *) &addr, &socklen);
+    i32 peername_result = getpeername(fd, (struct sockaddr *) &addr, &socklen);
     if (peername_result < 0) {
         perror("send_html");
         return -1;
@@ -170,7 +170,7 @@ u8 send_html(
     strcpy(response, header);
     strcat(response, parsed_html);
 
-    int send_result = send(fd, response, response_size, 0);
+    i32 send_result = send(fd, response, response_size, 0);
     if (send_result < 0) {
         perror("send_html");
         free(response);
