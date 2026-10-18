@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include "html_renderer.h"
 
 // TODO: Unsafe and probably breaks easily, just like every other god damn function in this project
 char *render_html(
     const char *contents,
     usize contents_size,
+    const char *base_dir,
     Html_Template_Args *args
 ) {
     char *buf = malloc(sizeof(char) * contents_size);
@@ -34,16 +34,14 @@ char *render_html(
 
                 arg_buf++;
 
-                char *cur_dir = getcwd(NULL, 0);
-                usize str_size = strlen(cur_dir) + strlen(arg_buf) + 2;
+                usize str_size = strlen(base_dir) + strlen(arg_buf) + 2;
 
                 char full_path[str_size];
 
-                snprintf(full_path, str_size, "%s/%s", cur_dir, arg_buf);
+                snprintf(full_path, str_size, "%s/%s", base_dir, arg_buf);
                 arg_value = read_file_to_cstr(full_path);
 
                 arg_buf--;
-                free(cur_dir);
             } else {
                 for (usize j = 0; j < args->argc; j++) {
                     if (strcmp(arg_buf, args->arg_keys[j]) == 0) {

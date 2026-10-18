@@ -161,7 +161,9 @@ i32 send_html(
     char header[header_size];
     sprintf(header, header_format, code, reason);
 
-    char *parsed_html = render_html(contents, file_size, args);
+    char *base_dir = get_base_dir(path);
+    char *parsed_html = render_html(contents, file_size, base_dir, args);
+    free(base_dir);
 
     usize response_size = strlen(parsed_html) + header_size + 1;
     char *response = (char *)malloc(sizeof(char) * response_size);

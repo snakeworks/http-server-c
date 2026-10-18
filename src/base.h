@@ -17,5 +17,6 @@
 #define usize size_t
 
 char *read_file_to_cstr(const char *path);
+char *get_base_dir(const char *file_path);
 
 #endif // BASE_H

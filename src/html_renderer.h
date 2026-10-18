@@ -12,12 +12,7 @@ typedef struct {
 char *render_html(
     const char *contents,
     usize contents_size,
-    Html_Template_Args *args
-);
-
-char *render_html(
-    const char *contents,
-    usize contents_size,
+    const char *base_dir,
     Html_Template_Args *args
 );
 
