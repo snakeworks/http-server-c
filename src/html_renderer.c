@@ -3,6 +3,15 @@
 #include <stdlib.h>
 #include "html_renderer.h"
 
+const char *peek(const char *contents, usize index) {
+    return &contents[index];
+}
+
+const char *advance(const char *contents, usize *index) {
+    *index = *index + 1;
+    return &contents[*index];
+}
+
 // TODO: Unsafe and probably breaks easily, just like every other god damn function in this project
 char *render_html(
     const char *contents,
@@ -14,17 +23,18 @@ char *render_html(
     memset(buf, 0, contents_size);
 
     usize total_size = contents_size;
-    usize buf_index = 0;
 
-    bool inside_braces = false;
-    char *arg_buf;
-    for (usize i = 0; i < contents_size; i++) {
-        if (contents[i] == '{') {
-            inside_braces = true;
-            arg_buf = malloc(sizeof(char) * 1024);
+    usize buf_index = 0;
+    usize contents_index = 0;
+    while (contents_index < contents_size) {
+        switch (*peek(contents, contents_index)) {
+        case '{':
+            char *arg_buf = malloc(sizeof(char) * 1024);
             memset(arg_buf, 0, 1024);
-        } else if (contents[i] == '}') {
-            inside_braces = false;
+
+            while (*advance(contents, &contents_index) != '}') {
+                arg_buf[strlen(arg_buf)] = *peek(contents, contents_index);
+            }
 
             // TODO: So much hacks and dirty code but it works
             char *arg_value = "";
@@ -43,9 +53,9 @@ char *render_html(
 
                 arg_buf--;
             } else {
-                for (usize j = 0; j < args->argc; j++) {
-                    if (strcmp(arg_buf, args->arg_keys[j]) == 0) {
-                        arg_value = args->arg_values[j];
+                for (usize i = 0; i < args->argc; i++) {
+                    if (strcmp(arg_buf, args->arg_keys[i]) == 0) {
+                        arg_value = args->arg_values[i];
                         break;
                     }
                 }
@@ -60,18 +70,21 @@ char *render_html(
             }
             buf = new_buf;
 
-            for (usize j = 0; j < arg_value_size; j++) {
-                buf[buf_index] = arg_value[j];
+            for (usize i = 0; i < arg_value_size; i++) {
+                buf[buf_index] = arg_value[i];
                 buf_index++;
             }
 
             if (should_free_value == true) free(arg_value);
             free(arg_buf);
-        } else if (inside_braces == true) {
-            arg_buf[strlen(arg_buf)] = contents[i];
-        } else {
-            buf[buf_index] = contents[i];
+
+            contents_index++;
+            break;
+        default:
+            buf[buf_index] = *peek(contents, contents_index);
+            contents_index++;
             buf_index++;
+            break;
         }
     }
 

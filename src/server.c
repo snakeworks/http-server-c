@@ -84,7 +84,6 @@ i32 server_recv_request(Server *server, Request *req) {
 
     char ipbuf[IPV4_STR_LEN];
     addr_to_cstr(&addr, ipbuf, IPV4_STR_LEN);
-    printf("Received request from IP: %s\n", ipbuf); // Leaking client IP lmao
 
     if (req->sender_fd < 0) {
         perror("recv_request");
@@ -122,6 +121,8 @@ i32 server_recv_request(Server *server, Request *req) {
     }
 
     req->method = cstr_to_http_method(http_method);
+
+    printf("%s %s from %s\n", http_method, req->resource, ipbuf); // Leaking client IP lmao
 
     return 0;
 }
