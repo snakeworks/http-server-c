@@ -158,32 +158,32 @@ i32 send_html(
     addr_to_cstr(&addr, ipbuf, IPV4_STR_LEN);
 
     char *header_format = "HTTP/1.1 %d %s\r\nContent-Type: text/html\r\n\r\n";
-    usize header_size = strlen(header_format) + strlen(reason) + 3; // +3 because of status code
+    usize header_size = snprintf(NULL, 0, header_format, code, reason) + 1;
     char header[header_size];
-    sprintf(header, header_format, code, reason);
+    snprintf(header, header_size, header_format, code, reason);
 
     char *base_dir = get_base_dir(path);
-    char *parsed_html = render_html(contents, file_size, base_dir, args);
+    char *rendered_html = render_html(contents, file_size, base_dir, args);
     free(base_dir);
 
-    usize response_size = strlen(parsed_html) + header_size + 1;
-    char *response = (char *)malloc(sizeof(char) * response_size);
+    usize response_size = strlen(rendered_html) + strlen(header);
+    char *response = (char *)malloc(sizeof(char) * response_size + 1);
     memset(response, 0, response_size);
 
     strcpy(response, header);
-    strcat(response, parsed_html);
+    strcat(response, rendered_html);
 
     i32 send_result = send(fd, response, response_size, 0);
     if (send_result < 0) {
         perror("send_html");
         free(response);
-        free(parsed_html);
+        free(rendered_html);
         free(contents);
         return send_result;
     }
 
     free(response);
-    free(parsed_html);
+    free(rendered_html);
     free(contents);
 
     return 0;
