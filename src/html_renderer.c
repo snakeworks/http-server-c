@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "html_renderer.h"
 
+#define MAX_ARG_NAME_LEN 1024
+
 const char *peek(const char *contents, usize index) {
     return &contents[index];
 }
@@ -29,11 +31,14 @@ char *render_html(
     while (contents_index < contents_size) {
         switch (*peek(contents, contents_index)) {
         case '{':
-            char *arg_buf = malloc(sizeof(char) * 1024);
-            memset(arg_buf, 0, 1024);
+            char arg_buf[MAX_ARG_NAME_LEN];
+            memset(arg_buf, 0, MAX_ARG_NAME_LEN);
+            usize arg_index = 0;
 
             while (*advance(contents, &contents_index) != '}') {
-                arg_buf[strlen(arg_buf)] = *peek(contents, contents_index);
+                if (arg_index >= MAX_ARG_NAME_LEN) continue;
+                arg_buf[arg_index] = *peek(contents, contents_index);
+                arg_index++;
             }
 
             // TODO: So much hacks and dirty code but it works
@@ -42,16 +47,12 @@ char *render_html(
             if (arg_buf[0] == '@') {
                 should_free_value = true;
 
-                arg_buf++;
-
-                usize str_size = strlen(base_dir) + strlen(arg_buf) + 2;
+                usize str_size = strlen(base_dir) + strlen(arg_buf + 1) + 2; // +2 for slash in filepath and null terminator
 
                 char full_path[str_size];
 
-                snprintf(full_path, str_size, "%s/%s", base_dir, arg_buf);
+                snprintf(full_path, str_size, "%s/%s", base_dir, arg_buf + 1);
                 arg_value = read_file_to_cstr(full_path);
-
-                arg_buf--;
             } else {
                 for (usize i = 0; i < args->argc; i++) {
                     if (strcmp(arg_buf, args->arg_keys[i]) == 0) {
@@ -76,7 +77,6 @@ char *render_html(
             }
 
             if (should_free_value == true) free(arg_value);
-            free(arg_buf);
 
             contents_index++;
             break;
