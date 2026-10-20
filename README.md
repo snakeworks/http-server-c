@@ -13,5 +13,4 @@ $ ./build/main # run server
 
 ## TODO
 - Add examples for all HTTP methods, not just GET.
-- Make portable. Currently it depends on `unistd` and other POSIX headers.
 - Make safer. Memory isn't managed as good as I'd hoped.
