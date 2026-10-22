@@ -14,3 +14,4 @@ $ ./build/main # run server
 ## TODO
 - Add examples for all HTTP methods, not just GET.
 - Make safer. Memory isn't managed as good as I'd hoped.
+- Extend template syntax to include loops and conditionals.
